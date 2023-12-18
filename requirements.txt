@@ -1,0 +1,12 @@
+boto3
+botocore
+langchain
+transformers
+pinecone-client
+psycopg2
+pgvector
+pypdf
+ipython
+xmltodict
+anthropic
+psycopg2

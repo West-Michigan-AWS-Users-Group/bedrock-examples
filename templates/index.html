@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>htmx Form Example</title>
+    <script src="https://unpkg.com/htmx.org@1.9.9" integrity="sha384-QFjmbokDn2DjBjq+fM+8LUIVrAgqcNW2s0PjAxHETgRn9l4fvX31ZxDxvwQnyMOX" crossorigin="anonymous"></script>
+    <style>
+        body {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    font-family: 'Arial', sans-serif;
+    background-color: #f4f4f4;
+    }
+
+    form {
+        text-align: center;
+        width: 60%;
+        max-width: 600px;
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    textarea {
+        width: 100%;
+        height: 50px;
+        box-sizing: border-box;
+        resize: vertical;
+        padding: 10px;
+        margin-bottom: 15px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+
+    #result-container {
+        margin-top: 20px;
+        width: 60%;
+        background-color: #fff;
+        padding: 20px;
+        overflow-wrap: break-word;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        max-height: 200px;
+        overflow-y: auto;
+    }
+
+    button {
+        background-color: #007BFF;
+        color: #fff;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 16px;
+        transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+        background-color: #0056b3;
+    }
+
+    </style>
+</head>
+<body>
+    <form hx-post="/bedrock_text" hx-target="#result-container" hx-encoding="multipart/form-data">
+        <label for="input_text">"One-Shot" Bedrock QA:</label>
+        <textarea id="input_text" name="input_text" maxlength="500" required></textarea>
+        <button type="submit">Ask Bedrock</button>
+    </form>
+
+    <div id="result-container"></div>
+
+    <script>
+document.addEventListener('htmx:afterSwap', function(event) {
+    // This event is triggered after the content is swapped
+    const resultElement = document.getElementById('result-container');
+    const newText = event.detail.xhr.responseText;
+
+    if (newText !== undefined) {
+        simulateTyping(resultElement, newText);
+    } else {
+        // Check if responseText is explicitly set to 'undefined'
+        if (event.detail.xhr.responseText && event.detail.xhr.responseText.includes('responseText=undefined')) {
+            console.error('Invalid response text: undefined');
+        } else {
+            console.error('Unexpected response format:', event.detail);
+        }
+    }
+});
+
+    function simulateTyping(resultElement, text) {
+        resultElement.innerHTML = ''; // Reset container
+
+        if (!text || typeof text !== 'string') {
+            console.error('Invalid response text:', text);
+            return;
+        }
+
+        const speed = 15; // Adjust the typing speed (milliseconds per character)
+
+        function typeCharacter(i) {
+            setTimeout(function() {
+                resultElement.innerHTML += text.charAt(i);
+                resultElement.scrollTop = resultElement.scrollHeight; // Auto-scroll to bottom
+                if (i < text.length - 1) {
+                    typeCharacter(i + 1);
+                }
+            }, speed);
+        }
+
+        typeCharacter(0);
+    }
+    </script>
+</body>
+</html>
