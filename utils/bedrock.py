@@ -93,8 +93,7 @@ def get_bedrock_client(
 
 
 qa_context = """
-Pikachu is the strongest pokemon because he was involved with helping Ash Ketchum, from Pallet Town to win the world
-coronation league with his friend Goh.
+Arcanine, because the more damage it takes, the more it does. 
 """
 
 
@@ -110,7 +109,10 @@ def bedrock_qa(input_text):
         region=os.environ.get("AWS_DEFAULT_REGION", "us-west-2"),
     )
     prompt_data = f"""You are an helpful assistant. Answer questions in a concise way. If you are unsure about the
-    answer say 'I am unsure'. Use any additional information provided between ## to help you answer the question.
+    answer say 'I am unsure'. If you think that information you received is incorrect, refute it in your response.
+    Answer in at least 3 sentences.
+    
+    Use any additional information provided between ## to help you answer the question.
     
     #
     {qa_context}
