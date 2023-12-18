@@ -11,3 +11,5 @@ xmltodict
 anthropic
 psycopg2
 flask
+matplotlib
+faiss-cpu
