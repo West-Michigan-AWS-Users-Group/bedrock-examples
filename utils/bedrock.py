@@ -166,17 +166,19 @@ def bedrock_code_evaluation(file_path, additional_context=None):
     with open(file_path, "r") as file:
         sample_code = file.read()
 
-    inference_modifier = {'max_tokens_to_sample': 4096,
-                          "temperature": 0.5,
-                          "top_k": 250,
-                          "top_p": 1,
-                          "stop_sequences": ["\n\nHuman"]
-                          }
+    inference_modifier = {
+        "max_tokens_to_sample": 4096,
+        "temperature": 0.5,
+        "top_k": 250,
+        "top_p": 1,
+        "stop_sequences": ["\n\nHuman"],
+    }
 
-    textgen_llm = Bedrock(model_id="anthropic.claude-v2",
-                          client=boto3_bedrock,
-                          model_kwargs=inference_modifier
-                          )
+    textgen_llm = Bedrock(
+        model_id="anthropic.claude-v2",
+        client=boto3_bedrock,
+        model_kwargs=inference_modifier,
+    )
 
     # Create a prompt template that has multiple input variables
     multi_var_prompt = PromptTemplate(
@@ -197,7 +199,11 @@ def bedrock_code_evaluation(file_path, additional_context=None):
     Assistant:""",
     )
     # Pass in values to the input variables
-    prompt = multi_var_prompt.format(code=sample_code, programmingLanguage="Python", additionalContext=additional_context)
+    prompt = multi_var_prompt.format(
+        code=sample_code,
+        programmingLanguage="Python",
+        additionalContext=additional_context,
+    )
 
     try:
         response = textgen_llm(prompt)
@@ -237,17 +243,19 @@ def bedrock_code_summary(file_path):
     with open(file_path, "r") as file:
         sample_code = file.read()
 
-    inference_modifier = {'max_tokens_to_sample': 4096,
-                          "temperature": 0.5,
-                          "top_k": 250,
-                          "top_p": 1,
-                          "stop_sequences": ["\n\nHuman"]
-                          }
+    inference_modifier = {
+        "max_tokens_to_sample": 4096,
+        "temperature": 0.5,
+        "top_k": 250,
+        "top_p": 1,
+        "stop_sequences": ["\n\nHuman"],
+    }
 
-    textgen_llm = Bedrock(model_id="anthropic.claude-v2",
-                          client=boto3_bedrock,
-                          model_kwargs=inference_modifier
-                          )
+    textgen_llm = Bedrock(
+        model_id="anthropic.claude-v2",
+        client=boto3_bedrock,
+        model_kwargs=inference_modifier,
+    )
 
     # Create a prompt template that has multiple input variables
     multi_var_prompt = PromptTemplate(
@@ -271,7 +279,7 @@ def bedrock_code_summary(file_path):
     )
     # Count the amount of tokens
     token_count = textgen_llm.get_num_tokens(sample_code)
-    print(f'Token count: {token_count}')
+    print(f"Token count: {token_count}")
 
     if token_count > 42000:
         print("The code is longer than 42000 tokens.. splitting into chunks")
@@ -280,7 +288,9 @@ def bedrock_code_summary(file_path):
         )
         python_docs = python_splitter.create_documents([sample_code])
         prompt = multi_var_prompt.format(code=python_docs)
-        summary_chain = load_summarize_chain(llm=textgen_llm, chain_type="map_reduce", verbose=False)
+        summary_chain = load_summarize_chain(
+            llm=textgen_llm, chain_type="map_reduce", verbose=False
+        )
         use_summary_chain = True
     else:
         summary_chain = None
@@ -288,7 +298,7 @@ def bedrock_code_summary(file_path):
         # Pass in values to the input variables
         prompt = multi_var_prompt.format(code=sample_code)
         use_summary_chain = False
-    #print(prompt)
+    # print(prompt)
 
     try:
         if use_summary_chain is True:

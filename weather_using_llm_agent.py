@@ -6,27 +6,31 @@ import requests
 import xmltodict
 from langchain.prompts import PromptTemplate
 
-# change to True if running locally and not in sagemaker studio
-local = False
-if local:
-    boto3.setup_default_session(profile_name=os.environ['AWS_PROFILE'])
 
-region = 'us-west-2'
+region = "us-west-2"
 boto3_bedrock = boto3.client(
-    service_name='bedrock-runtime',
+    service_name="bedrock-runtime",
     region_name=region,
 )
 
 
 def get_weather(latitude: str, longitude: str):
+    """
+    Get the weather for a given latitude and longitude
+    """
     url = f"https://api.open-meteo.com/v1/forecast?latitude={latitude}&longitude={longitude}&current_weather=true"
     response = requests.get(url)
     return response.json()
 
 
 def get_lat_long(place: str):
+    """
+    Get the latitude and longitude for a given place
+    :param place:
+    :return:
+    """
     url = "https://nominatim.openstreetmap.org/search"
-    params = {'q': place, 'format': 'json', 'limit': 1}
+    params = {"q": place, "format": "json", "limit": 1}
     response = requests.get(url, params=params).json()
     if response:
         lat = response[0]["lat"]
@@ -37,10 +41,17 @@ def get_lat_long(place: str):
 
 
 def call_function(tool_name, parameters):
+    """
+    Call a function by name and pass in the parameters
+    :param tool_name:
+    :param parameters:
+    :return:
+    """
     func = globals()[tool_name]
     # print(func, tool_name, parameters)
     output = func(**parameters)
     return output
+
 
 # Example testing the functions and their responses for a hard coded place
 # place = 'Rockford Michigan'
@@ -71,7 +82,7 @@ get_lat_long_description = """
 </tool_description>"""
 
 list_of_tools_specs = [get_weather_description, get_lat_long_description]
-tools_string = ''.join(list_of_tools_specs)
+tools_string = "".join(list_of_tools_specs)
 
 TOOL_TEMPLATE = """\
 Your job is to formulate a solution to a given <user-request> based on the instructions and tools below.
@@ -113,57 +124,88 @@ TOOL_PROMPT = PromptTemplate.from_template(TOOL_TEMPLATE)
 
 
 def invoke_model(prompt):
-    client = boto3.client(service_name='bedrock-runtime', region_name=os.environ.get("AWS_REGION"), )
-    body = json.dumps({"prompt": prompt, "max_tokens_to_sample": 500, "temperature": 0, })
+    """
+    Invoke the LLM model
+    :param prompt:
+    :return:
+    """
+    client = boto3.client(
+        service_name="bedrock-runtime",
+        region_name=os.environ.get("AWS_REGION"),
+    )
+    body = json.dumps(
+        {
+            "prompt": prompt,
+            "max_tokens_to_sample": 500,
+            "temperature": 0,
+        }
+    )
     modelId = "anthropic.claude-v2"
     # modelId = "anthropic.claude-instant-v1"
     response = client.invoke_model(
-        body=body, modelId=modelId, accept="application/json", contentType="application/json"
+        body=body,
+        modelId=modelId,
+        accept="application/json",
+        contentType="application/json",
     )
     return json.loads(response.get("body").read()).get("completion")
 
 
 def single_agent_step(prompt, output):
+    """
+    Execute a single step in the LLM agent, either by calling a function or answering the question
+
+    :param prompt:
+    :param output:
+    :return: done, prompt
+    """
     # first check if the model has answered the question
     done = False
-    print(f'prompt: {prompt}')
-    print(f'output: {output}')
-    if '<answer>' in output:
-        answer = output.split('<answer>')[1]
-        answer = answer.split('</answer>')[0]
+    print(f"prompt: {prompt}")
+    print(f"output: {output}")
+    if "<answer>" in output:
+        answer = output.split("<answer>")[1]
+        answer = answer.split("</answer>")[0]
         done = True
         return done, answer
 
     # if the model has not answered the question, go execute a function
     else:
-
         # parse the output for any
-        function_xml = output.split('<function_calls>')[1]
-        function_xml = function_xml.split('</function_calls>')[0]
+        function_xml = output.split("<function_calls>")[1]
+        function_xml = function_xml.split("</function_calls>")[0]
         function_dict = xmltodict.parse(function_xml)
-        func_name = function_dict['invoke']['tool_name']
-        print(f'Sending function call {func_name} and feeding response to LLM in a structured fashion')
-        parameters = function_dict['invoke']['parameters']
-        print(f'Parameters are... {parameters}')
+        func_name = function_dict["invoke"]["tool_name"]
+        print(
+            f"Sending function call {func_name} and feeding response to LLM in a structured fashion"
+        )
+        parameters = function_dict["invoke"]["parameters"]
+        print(f"Parameters are... {parameters}")
 
         # print(f"single_agent_step:: func_name={func_name}::params={parameters}::function_dict={function_dict}::")
         # call the function which was parsed
         func_response = call_function(func_name, parameters)
-        print(f'Function response is... {func_response}')
+        print(f"Function response is... {func_response}")
 
         # create the next human input
-        func_response_str = '\n\nHuman: Here is the result from your function call\n\n'
-        func_response_str = func_response_str + f'<function_results>\n{func_response}\n</function_results>'
-        func_response_str = func_response_str + '\n\nIf you know the answer, say it. If not, what is the next step?\n\nAssistant:'
-        print(f'Sending the following prompt... {func_response_str}')
+        func_response_str = "\n\nHuman: Here is the result from your function call\n\n"
+        func_response_str = (
+            func_response_str
+            + f"<function_results>\n{func_response}\n</function_results>"
+        )
+        func_response_str = (
+            func_response_str
+            + "\n\nIf you know the answer, say it. If not, what is the next step?\n\nAssistant:"
+        )
+        print(f"Sending the following prompt... {func_response_str}")
 
         # augment the prompt
         prompt = prompt + output + func_response_str
-    print('***********************')
+    print("***********************")
     return done, prompt
 
 
-user_input = 'What is the weather in Las Vegas?'
+user_input = "What is the weather in Las Vegas?"
 next_step = TOOL_PROMPT.format(tools_string=tools_string, user_input=user_input)
 
 output = invoke_model(next_step).strip()
@@ -171,31 +213,31 @@ done, next_step = single_agent_step(next_step, output)
 if not done:
     pass
 else:
-    print(('Final answer from LLM: ' + f'{next_step}'))
+    print(("Final answer from LLM: " + f"{next_step}"))
 
 output = invoke_model(next_step).strip()
 done, next_step = single_agent_step(next_step, output)
 if not done:
     pass
 else:
-    print('Final answer from LLM: ' + f'{next_step}')
+    print("Final answer from LLM: " + f"{next_step}")
 
 output = invoke_model(next_step).strip()
 done, next_step = single_agent_step(next_step, output)
 if not done:
     pass
 else:
-    print('Final answer from LLM: ' + f'{next_step}')
+    print("Final answer from LLM: " + f"{next_step}")
 
-user_input = 'What is the weather in Singapore?'
+user_input = "What is the weather in Singapore?"
 next_step = TOOL_PROMPT.format(tools_string=tools_string, user_input=user_input)
 
 for i in range(5):
-    print(f'index: {i}')
+    print(f"index: {i}")
     output = invoke_model(next_step).strip()
     done, next_step = single_agent_step(next_step, output)
     if not done:
         pass
     else:
-        print('Range answer from LLM: ' + f'{next_step}')
+        print("Range answer from LLM: " + f"{next_step}")
         break
