@@ -1,7 +1,6 @@
 import csv
 import json
 import os
-import sys
 from io import StringIO
 
 import requests
@@ -13,7 +12,6 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores import FAISS
 
 from utils import bedrock, print_ww
-
 
 boto3_bedrock = bedrock.get_bedrock_client(
     assumed_role=os.environ.get("BEDROCK_ASSUME_ROLE", None),
@@ -195,7 +193,8 @@ def store_csv_vector_db(document_path):
     print_ww(
         wrapper_store_faiss.query(
             "What is the popularity score of Magic the gathering compared to Pokemon?"
-            f"Be sure to include the following data in a bullet-list format {additional_context}", llm=cl_llm
+            f"Be sure to include the following data in a bullet-list format {additional_context}",
+            llm=cl_llm,
         )
     )
 
