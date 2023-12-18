@@ -77,7 +77,6 @@ def fetch_irs_documents():
 def load_vector_db(database, user, host, password, connection_string):
     module_path = ".."
     sys.path.append(os.path.abspath(module_path))
-    claud_llm = init_bedrock_claude_client()
     bedrock_emb = BedrockEmbeddings(
         model_id="amazon.titan-embed-text-v1", client=bedrock_connection()
     )
@@ -87,7 +86,7 @@ def load_vector_db(database, user, host, password, connection_string):
     loader = PyPDFDirectoryLoader("./data/")
 
     documents = loader.load()
-    # - in our testing Character split works better with this PDF data set
+    # Define text splitter object
     text_splitter = RecursiveCharacterTextSplitter(
         # Set a tiny chunk size, just to show.
         chunk_size=1000,
@@ -117,17 +116,17 @@ def load_vector_db(database, user, host, password, connection_string):
     conn = psycopg2.connect(dbname=database, user=user, host=host, password=password)
     conn.cursor()
     conn.commit()
-
+    # Create vector database from split documents
     db = PGVector.from_documents(
         embedding=bedrock_emb,
         documents=docs,
         collection_name="tax_info",
         connection_string=connection_string,
     )
-    return bedrock_emb, claud_llm, docs
+    return bedrock_emb, docs
 
 
-bedrock_embeddings, qa_llm, qa_docs = load_vector_db(
+bedrock_embeddings, qa_docs = load_vector_db(
     **pg_params,
     connection_string=create_vector_datastore_connection_string(**pg_params),
 )
