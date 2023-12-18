@@ -9,7 +9,7 @@ from utils import bedrock
 
 boto3_bedrock = bedrock.get_bedrock_client(
     assumed_role=os.environ.get("BEDROCK_ASSUME_ROLE", None),
-    region=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
+    region=os.environ.get("AWS_DEFAULT_REGION", "us-west-2"),
 )
 
 app = Flask(__name__)

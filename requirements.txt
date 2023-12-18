@@ -10,3 +10,4 @@ ipython
 xmltodict
 anthropic
 psycopg2
+flask

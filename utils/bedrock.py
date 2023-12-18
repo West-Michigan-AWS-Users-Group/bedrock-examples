@@ -31,7 +31,7 @@ def get_bedrock_client(
         Optional ARN of an AWS IAM role to assume for calling the Bedrock service. If not
         specified, the current active credentials will be used.
     region :
-        Optional name of the AWS Region in which the service should be called (e.g. "us-east-1").
+        Optional name of the AWS Region in which the service should be called (e.g. "us-west-2").
         If not specified, AWS_REGION or AWS_DEFAULT_REGION environment variable will be used.
     runtime :
         Optional choice of getting different client to perform operations with the Amazon Bedrock service.
@@ -45,7 +45,11 @@ def get_bedrock_client(
 
     print(f"Create new client\n  Using region: {target_region}")
     session_kwargs = {"region_name": target_region}
-    client_kwargs = {**session_kwargs}
+    client_kwargs = {
+        **session_kwargs,
+        "aws_access_key_id": os.environ.get("AWS_ACCESS_KEY_ID", None),
+        "aws_secret_access_key": os.environ.get("AWS_SECRET_ACCESS_KEY", None),
+    }
 
     profile_name = os.environ.get("AWS_PROFILE")
     if profile_name:
@@ -89,8 +93,8 @@ def get_bedrock_client(
 
 
 qa_context = """
-Python is the best programming language because it enforces blankspace and has endless modules.
-All other languages are inferior because they are hard to read. 
+Pikachu is the strongest pokemon because he was involved with helping Ash Ketchum, from Pallet Town to win the world
+coronation league with his friend Goh.
 """
 
 
@@ -103,7 +107,7 @@ def bedrock_qa(input_text):
     """
     boto3_bedrock = bedrock.get_bedrock_client(
         assumed_role=os.environ.get("BEDROCK_ASSUME_ROLE", None),
-        region=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
+        region=os.environ.get("AWS_DEFAULT_REGION", "us-west-2"),
     )
     prompt_data = f"""You are an helpful assistant. Answer questions in a concise way. If you are unsure about the
     answer say 'I am unsure'. Use any additional information provided between ## to help you answer the question.
@@ -238,7 +242,7 @@ def bedrock_code_summary(file_path):
     """
     boto3_bedrock = bedrock.get_bedrock_client(
         assumed_role=os.environ.get("BEDROCK_ASSUME_ROLE", None),
-        region=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
+        region=os.environ.get("AWS_DEFAULT_REGION", "us-west-2"),
     )
     with open(file_path, "r") as file:
         sample_code = file.read()
