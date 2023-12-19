@@ -93,9 +93,8 @@ Use these Instructions:
 3. Only invoke one function at a time and wait for the results before invoking another function.
 4. The Results of the function will be in xml tag <function_results>. Never make these up. The values will be provided for you.
 5. Only use the information in the <function_results> to answer the question.
-6. If the information returned is in metric, convert the values to imperial. Never list metric units
-7. Once you truly know the answer to the question, place the answer in <answer></answer> tags. Make sure to answer in a full sentence which has a funny joke about the current conditions.
-8. Never ask any questions
+6. Once you truly know the answer to the question, place the answer in <answer></answer> tags. Make sure to answer in a full sentence which is friendly.
+7. Never ask any questions
 
 <function_calls>
 <invoke>
@@ -151,20 +150,20 @@ def invoke_model(prompt):
     return json.loads(response.get("body").read()).get("completion")
 
 
-def single_agent_step(prompt, output):
+def single_agent_step(prompt, agent_output):
     """
     Execute a single step in the LLM agent, either by calling a function or answering the question
 
     :param prompt:
-    :param output:
+    :param agent_output:
     :return: done, prompt
     """
     # first check if the model has answered the question
     done = False
     print(f"prompt: {prompt}")
-    print(f"output: {output}")
-    if "<answer>" in output:
-        answer = output.split("<answer>")[1]
+    print(f"output: {agent_output}")
+    if "<answer>" in agent_output:
+        answer = agent_output.split("<answer>")[1]
         answer = answer.split("</answer>")[0]
         done = True
         return done, answer
@@ -172,7 +171,7 @@ def single_agent_step(prompt, output):
     # if the model has not answered the question, go execute a function
     else:
         # parse the output for any
-        function_xml = output.split("<function_calls>")[1]
+        function_xml = agent_output.split("<function_calls>")[1]
         function_xml = function_xml.split("</function_calls>")[0]
         function_dict = xmltodict.parse(function_xml)
         func_name = function_dict["invoke"]["tool_name"]
@@ -200,7 +199,7 @@ def single_agent_step(prompt, output):
         print(f"Sending the following prompt... {func_response_str}")
 
         # augment the prompt
-        prompt = prompt + output + func_response_str
+        prompt = prompt + agent_output + func_response_str
     print("***********************")
     return done, prompt
 
@@ -222,14 +221,8 @@ if not done:
 else:
     print("Final answer from LLM: " + f"{next_step}")
 
-output = invoke_model(next_step).strip()
-done, next_step = single_agent_step(next_step, output)
-if not done:
-    pass
-else:
-    print("Final answer from LLM: " + f"{next_step}")
-
 user_input = "What is the weather in Singapore?"
+
 next_step = TOOL_PROMPT.format(tools_string=tools_string, user_input=user_input)
 
 for i in range(5):
