@@ -128,14 +128,14 @@ def load_vector_db(conn_string):
     sample_embedding = np.array(bedrock_emb.embed_query(docs[0].page_content))
     print("Sample embedding of a document chunk: ", sample_embedding)
     print("Size of the embedding: ", sample_embedding.shape)
-
+    # call function that loads db and creates vectorstore
     load_and_search_embeddings(bedrock_emb, docs, conn_string)
 
     return bedrock_emb, docs
 
 
 def load_and_search_embeddings(emb_obj, split_docs, vectorstore_connection_string):
-    # Load vectorstore from documents
+    print("Loading documents into vectorstore...")
     db = PGVector.from_documents(
         embedding=emb_obj,
         documents=split_docs,
@@ -156,7 +156,7 @@ def load_and_search_embeddings(emb_obj, split_docs, vectorstore_connection_strin
 vector_db_connection_string = create_vector_datastore_connection_string(**pg_params)
 bedrock_embeddings, qa_docs = load_vector_db(vector_db_connection_string)
 print_separator()
-print("Searching data from vector database...")
+print("Creating vectorstore from existing database...")
 ## Create vectorstore from existing database
 tax_vectorstore = PGVector(
     collection_name="pdf_docs",
