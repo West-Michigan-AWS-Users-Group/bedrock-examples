@@ -24,6 +24,15 @@ from utils import bedrock, print_ww
 query = "What are the VPC architectures available for deployment within the AWS network architectural guidelines?"
 
 
+def print_separator():
+    print_ww(
+        "***************************************************************************************\n"
+        "***************************************************************************************\n"
+        "\n"
+        "\n"
+    )
+
+
 def bedrock_connection():
     return bedrock.get_bedrock_client(
         assumed_role=os.environ.get("BEDROCK_ASSUME_ROLE", None),
@@ -145,9 +154,8 @@ def load_and_search_embeddings(emb_obj, split_docs, vectorstore_connection_strin
 
 
 vector_db_connection_string = create_vector_datastore_connection_string(**pg_params)
-# print('Loading vector database...')
 bedrock_embeddings, qa_docs = load_vector_db(vector_db_connection_string)
-
+print_separator()
 print("Searching data from vector database...")
 ## Create vectorstore from existing database
 tax_vectorstore = PGVector(
@@ -162,6 +170,7 @@ claude_llm = init_bedrock_claude_client()
 
 similar_documents = tax_vectorstore.similarity_search(query, k=3)
 # our search query  # return 3 most relevant docs
+print_separator()
 print(f"Titan printing similar documents...{similar_documents}")
 
 # Use claude to generate a prompt for the query
@@ -172,14 +181,8 @@ qa = RetrievalQA.from_chain_type(
 )
 
 qa_result = qa(query)
+print_separator()
 print_ww(f'Claude qa query standalone result: {qa_result["result"]}')
-
-print_ww(
-    "***************************************************************************************"
-)
-print_ww(
-    "***************************************************************************************"
-)
 
 qa_sources = RetrievalQAWithSourcesChain.from_chain_type(
     llm=claude_llm,
@@ -190,6 +193,7 @@ qa_sources = RetrievalQAWithSourcesChain.from_chain_type(
 )
 
 qa_source_result = qa_sources(query)
+print_separator()
 print_ww(f'Claude qa with sources answer: {qa_source_result["answer"]}')
 try:
     print_ww(f'Claude qa with sources sources: {qa_source_result["source_documents"]}')
