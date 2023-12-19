@@ -13,8 +13,15 @@ from langchain.vectorstores.pgvector import PGVector
 
 from utils import bedrock, print_ww
 
-
 # docker run --name postgres -e POSTGRES_PASSWORD=bedrockworkshop! -p 5432:5432 -v ./init.sql:/docker-entrypoint-initdb.d/init.sql -d ankane/pgvector
+
+
+# query = "What website can I visit for help with my taxes?"
+# query = "When does a business have to report tips and what are the guidelines?"
+# query = "Am I required to have an EIN to file taxes?"
+# query = "What is the difference between a sole proprietorship and a partnership?"
+# query = "Is it possible that I get sentenced to jail due to failure in filings?"
+query = "What are the VPC architectures available for deployment within the AWS network architectural guidelines?"
 
 
 def bedrock_connection():
@@ -74,7 +81,7 @@ def fetch_irs_documents():
         urlretrieve(url, file_path)
 
 
-def load_vector_db(database, user, host, password, connection_string):
+def load_vector_db(conn_string):
     module_path = ".."
     sys.path.append(os.path.abspath(module_path))
     bedrock_emb = BedrockEmbeddings(
@@ -113,28 +120,39 @@ def load_vector_db(database, user, host, password, connection_string):
     print("Sample embedding of a document chunk: ", sample_embedding)
     print("Size of the embedding: ", sample_embedding.shape)
 
-    conn = psycopg2.connect(dbname=database, user=user, host=host, password=password)
-    conn.cursor()
-    conn.commit()
-    # Create vector database from split documents
-    db = PGVector.from_documents(
-        embedding=bedrock_emb,
-        documents=docs,
-        collection_name="tax_info",
-        connection_string=connection_string,
-    )
+    load_and_search_embeddings(bedrock_emb, docs, conn_string)
+
     return bedrock_emb, docs
 
 
-bedrock_embeddings, qa_docs = load_vector_db(
-    **pg_params,
-    connection_string=create_vector_datastore_connection_string(**pg_params),
-)
+def load_and_search_embeddings(emb_obj, split_docs, vectorstore_connection_string):
+    # Load vectorstore from documents
+    db = PGVector.from_documents(
+        embedding=emb_obj,
+        documents=split_docs,
+        collection_name="pdf_docs",
+        connection_string=vectorstore_connection_string,
+        pre_delete_collection=True,
+    )
+    # search db from datastore object
+    print(f"Titan searching db from documents with query: {query}")
+    docs_with_score = db.similarity_search_with_score(query)
+    for doc, score in docs_with_score:
+        print("-" * 80)
+        print("Score: ", score)
+        print(doc.page_content)
+        print("-" * 80)
 
-## Create a PGVector Store. Helpful if we didn't create the store in this session
+
+vector_db_connection_string = create_vector_datastore_connection_string(**pg_params)
+# print('Loading vector database...')
+bedrock_embeddings, qa_docs = load_vector_db(vector_db_connection_string)
+
+print("Searching data from vector database...")
+## Create vectorstore from existing database
 tax_vectorstore = PGVector(
-    collection_name="tax_info",
-    connection_string=create_vector_datastore_connection_string(**pg_params),
+    collection_name="pdf_docs",
+    connection_string=vector_db_connection_string,
     embedding_function=BedrockEmbeddings(
         model_id="amazon.titan-embed-text-v1", client=bedrock_connection()
     ),
@@ -142,14 +160,11 @@ tax_vectorstore = PGVector(
 
 claude_llm = init_bedrock_claude_client()
 
-# query = "What website can I visit for help with my taxes?"
-# query = "When does a business have to report tips and what are the guidelines?"
-# query = "Am I required to have an EIN to file taxes?"
-# query = "What is the difference between a sole proprietorship and a partnership?"
-query = "Is it possible that I get sentenced to jail due to failure in filings?"
-similar_documents = tax_vectorstore.similarity_search(
-    query, k=3
-)  # our search query  # return 3 most relevant docs
+similar_documents = tax_vectorstore.similarity_search(query, k=3)
+# our search query  # return 3 most relevant docs
+print(f"Titan printing similar documents...{similar_documents}")
+
+# Use claude to generate a prompt for the query
 qa = RetrievalQA.from_chain_type(
     llm=claude_llm,
     chain_type="stuff",
@@ -157,7 +172,7 @@ qa = RetrievalQA.from_chain_type(
 )
 
 qa_result = qa(query)
-print_ww(f'qa query standalone result: {qa_result["result"]}')
+print_ww(f'Claude qa query standalone result: {qa_result["result"]}')
 
 print_ww(
     "***************************************************************************************"
@@ -165,7 +180,6 @@ print_ww(
 print_ww(
     "***************************************************************************************"
 )
-
 
 qa_sources = RetrievalQAWithSourcesChain.from_chain_type(
     llm=claude_llm,
@@ -176,9 +190,9 @@ qa_sources = RetrievalQAWithSourcesChain.from_chain_type(
 )
 
 qa_source_result = qa_sources(query)
-print_ww(f'qa with sources answer: {qa_source_result["answer"]}')
+print_ww(f'Claude qa with sources answer: {qa_source_result["answer"]}')
 try:
-    print_ww(f'qa with sources sources: {qa_source_result["source_documents"]}')
+    print_ww(f'Claude qa with sources sources: {qa_source_result["source_documents"]}')
 except KeyError:
     pass
 # uncomment this and the above argument to return_source_documents to see the source documents
